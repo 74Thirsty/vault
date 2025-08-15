@@ -1,6 +1,12 @@
 
 # 🔐 Encrypted Address Vault CLI
 
+[![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Ethereum](https://img.shields.io/badge/network-Ethereum-%236C71C4)](https://ethereum.org/)
+[![Security](https://img.shields.io/badge/encryption-AES--256-orange.svg)]()
+[![Issues](https://img.shields.io/github/issues/74Thirsty/vault.svg)](https://github.com/74Thirsty/vault/issues)
+
 A cross-platform, interactive command-line tool for securely storing and managing **wallet addresses** and **contract addresses** — encrypted locally with AES-256 and syncable to remote backends like **FTP**, **SFTP**, and **SMB**.
 
 This tool ensures your sensitive blockchain data never leaves your machine **unencrypted**, and your master password is **never stored** anywhere.
