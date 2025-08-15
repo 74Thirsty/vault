@@ -1,7 +1,7 @@
 
 # 🔐 Encrypted Address Vault CLI
 
-[![Copilot-20250601-124946.png](https://i.postimg.cc/P5TQq2RL/Copilot-20250601-124946.png)](https://postimg.cc/QHYT4kss)
+![GADGET SAAVY banner](https://raw.githubusercontent.com/74Thirsty/74Thirsty/main/assets/banner.svg)
 
 ## 🔧 Technologies & Tools
 
