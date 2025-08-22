@@ -188,4 +188,5 @@ vault.enc
 ```
 
 ```
-
+vault.salt
+```
