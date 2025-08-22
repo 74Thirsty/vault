@@ -1,134 +1,154 @@
-#!/usr/bin/env python3
-import os
+# file: vault.py
 import sys
+import os
 import json
-import getpass
-import shutil
 import base64
+import getpass
+import socket
+from typing import Dict, Any, List, Optional, Tuple
 from pathlib import Path
+from ftplib import FTP
+
+try:
+    import paramiko
+except Exception:
+    paramiko = None
+
+try:
+    from smb.SMBConnection import SMBConnection
+except Exception:
+    SMBConnection = None
+
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
-from cryptography.fernet import Fernet, InvalidToken
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.backends import default_backend
+import secrets
 
-VAULT_FILE = Path("vault.enc")
-SALT_FILE = Path("vault.salt")
-
-# === Encryption Helpers ===
-def derive_key(password: str, salt: bytes) -> bytes:
-    """Derive AES key from password + salt."""
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=salt,
-        iterations=390000,
-        backend=default_backend()
-    )
-    return base64.urlsafe_b64encode(kdf.derive(password.encode()))
-
-def create_vault(password: str):
-    """Initialize new vault."""
-    salt = os.urandom(16)
-    SALT_FILE.write_bytes(salt)
-    key = derive_key(password, salt)
-    data = {}
-    token = Fernet(key).encrypt(json.dumps(data).encode())
-    VAULT_FILE.write_bytes(token)
-    print("✅ New vault created.")
-
-def load_vault(password: str) -> dict:
-    """Decrypt and load vault data."""
-    salt = SALT_FILE.read_bytes()
-    key = derive_key(password, salt)
-    f = Fernet(key)
-    token = VAULT_FILE.read_bytes()
-    decrypted = f.decrypt(token)  # Raises InvalidToken if wrong password
-    return json.loads(decrypted.decode()), key
-
-def save_vault(data: dict, key: bytes):
-    """Encrypt and save vault data."""
-    token = Fernet(key).encrypt(json.dumps(data).encode())
-    VAULT_FILE.write_bytes(token)
-
-# === Transport Placeholder ===
-def sync_to_remote():
-    """Future: sync vault to SMB/FTP/WebDAV/Cloud."""
-    pass
-
-# === Interactive Menu ===
-def add_entry(data: dict):
-    label = input("Label for address (e.g. Contract1, WalletA): ").strip()
-    addr = input("Address: ").strip()
-    data[label] = addr
-    print(f"✅ Added {label}.")
-
-def list_entries(data: dict):
-    if not data:
-        print("📭 Vault is empty.")
-        return
-    print("\nStored addresses:")
-    for label, addr in data.items():
-        print(f" - {label}: {addr}")
-
-def delete_entry(data: dict):
-    label = input("Label to delete: ").strip()
-    if label in data:
-        del data[label]
-        print(f"🗑 Deleted {label}.")
-    else:
-        print("❌ Not found.")
-
-# === Main Execution ===
-def main():
-    # Handle reset flag
-    if "--reset" in sys.argv:
-        if VAULT_FILE.exists():
-            shutil.move(VAULT_FILE, f"{VAULT_FILE}.bak")
-        if SALT_FILE.exists():
-            shutil.move(SALT_FILE, f"{SALT_FILE}.bak")
-        print("🧨 Vault reset. Starting fresh...")
-    
-    if not VAULT_FILE.exists():
-        # First run: set master password
-        pwd = getpass.getpass("Set master password: ")
-        create_vault(pwd)
-
-    # Always ask for password (max 3 tries)
-    for attempt in range(3):
-        pwd = getpass.getpass("Enter master password: ")
+def read_all_bytes_from_file(path: str) -> bytes:
+    f = open(path, "rb")
+    try:
+        data = f.read()
+    finally:
         try:
-            data, key = load_vault(pwd)
-            break
-        except InvalidToken:
-            print("❌ Wrong password.")
-            if attempt == 2:
-                print("🚪 Too many failed attempts. Exiting.")
-                sys.exit(1)
-    else:
-        sys.exit(1)
+            f.close()
+        except Exception:
+            pass
+    return data
 
-    # Main menu loop
-    while True:
-        print("\n--- Vault Menu ---")
-        print("1. Add entry")
-        print("2. List entries")
-        print("3. Delete entry")
-        print("4. Save & Exit")
-        choice = input("Select: ").strip()
+def write_all_bytes_to_file(path: str, data: bytes) -> None:
+    f = open(path, "wb")
+    try:
+        f.write(data)
+        f.flush()
+        os.fsync(f.fileno())
+    finally:
+        try:
+            f.close()
+        except Exception:
+            pass
 
-        if choice == "1":
-            add_entry(data)
-        elif choice == "2":
-            list_entries(data)
-        elif choice == "3":
-            delete_entry(data)
-        elif choice == "4":
-            save_vault(data, key)
-            print("💾 Vault saved. Goodbye.")
-            sync_to_remote()
-            break
-        else:
-            print("❌ Invalid choice.")
+def read_all_text_from_file(path: str) -> str:
+    f = open(path, "r", encoding="utf-8")
+    try:
+        data = f.read()
+    finally:
+        try:
+            f.close()
+        except Exception:
+            pass
+    return data
 
-if __name__ == "__main__":
-    main()
+def write_all_text_to_file(path: str, text: str) -> None:
+    f = open(path, "w", encoding="utf-8")
+    try:
+        f.write(text)
+        f.flush()
+        os.fsync(f.fileno())
+    finally:
+        try:
+            f.close()
+        except Exception:
+            pass
+
+def b64e(b: bytes) -> str:
+    return base64.b64encode(b).decode("utf-8")
+
+def b64d(s: str) -> bytes:
+    return base64.b64decode(s.encode("utf-8"))
+
+def derive_key_from_password_and_salt(password_bytes: bytes, salt_bytes: bytes, iterations: int) -> bytes:
+    kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt_bytes, iterations=iterations, backend=default_backend())
+    key = kdf.derive(password_bytes)
+    return key
+
+def encrypt_vault_json_with_password(vault_json_text: str, password_text: str) -> bytes:
+    salt = secrets.token_bytes(16)
+    iterations = 200000
+    password_bytes = password_text.encode("utf-8")
+    key = derive_key_from_password_and_salt(password_bytes, salt, iterations)
+    nonce = secrets.token_bytes(12)
+    aesgcm = AESGCM(key)
+    plaintext_bytes = vault_json_text.encode("utf-8")
+    ciphertext = aesgcm.encrypt(nonce, plaintext_bytes, None)
+    obj = {
+        "version": 1,
+        "kdf": "pbkdf2-sha256",
+        "iterations": iterations,
+        "salt": b64e(salt),
+        "nonce": b64e(nonce),
+        "ciphertext": b64e(ciphertext)
+    }
+    encoded = json.dumps(obj, separators=(",", ":")).encode("utf-8")
+    for i in range(len(password_bytes)):
+        password_bytes = b""
+    key = b""
+    plaintext_bytes = b""
+    return encoded
+
+def decrypt_vault_bytes_with_password(vault_bytes: bytes, password_text: str) -> str:
+    obj = json.loads(vault_bytes.decode("utf-8"))
+    if not isinstance(obj, dict):
+        raise ValueError("invalid")
+    iterations = int(obj.get("iterations"))
+    salt_b = b64d(str(obj.get("salt")))
+    nonce_b = b64d(str(obj.get("nonce")))
+    ct_b = b64d(str(obj.get("ciphertext")))
+    password_bytes = password_text.encode("utf-8")
+    key = derive_key_from_password_and_salt(password_bytes, salt_b, iterations)
+    aesgcm = AESGCM(key)
+    pt = aesgcm.decrypt(nonce_b, ct_b, None)
+    text = pt.decode("utf-8")
+    for i in range(len(password_bytes)):
+        password_bytes = b""
+    key = b""
+    pt = b""
+    return text
+
+def initialize_new_vault_structure() -> Dict[str, Any]:
+    data: Dict[str, Any] = {}
+    data["entries"] = []
+    data["meta"] = {}
+    data["meta"]["created"] = int(secrets.randbits(32))
+    data["meta"]["version"] = 1
+    return data
+
+def vault_path_default() -> str:
+    return str(Path(".").resolve() / "vault.enc")
+
+def safe_input(prompt: str) -> str:
+    try:
+        return input(prompt)
+    except EOFError:
+        return ""
+    except KeyboardInterrupt:
+        return ""
+
+def safe_getpass(prompt: str) -> str:
+    try:
+        return getpass.getpass(prompt)
+    except Exception:
+        return ""
+
+def load_or_create_vault(password_text: str, path: str) -> Dict[str, Any]:
+    if os.path.exists(p
