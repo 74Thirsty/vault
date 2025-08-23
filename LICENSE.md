@@ -1,18 +1,18 @@
 #   Script License
 
-**Script Name:** Wallet Script  
+**Script Name:** Vault Script  
 **Author/Owner:** Christopher Hirschauer (Gadget Saavy)  
 **Year:** 2025  
 
 ---
 
 ## 1. Ownership
-This Wallet Script and all related code remain the intellectual property of the Author.  
+This Vault Script and all related code remain the intellectual property of the Author.  
 Ownership does not transfer through use, modification, or distribution.  
 
 ## 2. Permissions
 You are permitted to:  
-- Use this script for personal or commercial wallet operations.  
+- Use this script for personal or commercial vault operations.  
 - Copy or modify the code for your own workflow.  
 - Distribute the script, provided that attribution to the Author is preserved.  
 
@@ -24,12 +24,12 @@ When using or distributing this script, you must:
 
 ## 4. Restrictions
 You may **not**:  
-- Claim authorship of this Wallet Script.  
+- Claim authorship of this Vault Script.  
 - Remove references to Gadget Saavy or the Author.  
 - Re-license this script under another name or entity.  
 
 ## 5. Disclaimer
-This Wallet Script is provided strictly **“AS IS.”**  
+This Vault Script is provided strictly **“AS IS.”**  
 Use of this script constitutes your **full and unconditional release of the Author from any and all liability.**  
 
 - The Author provides no warranties, guarantees, or assurances of any kind.  
