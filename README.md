@@ -166,7 +166,9 @@ pip install cryptography paramiko pysmb
 
 ## 📄 License
 
-MIT License — feel free to fork, modify, and contribute.
+This project is released under the **Gadget Saavy Vault Script License**.  
+See the full license text here: [LICENSE.md](./LICENSE.md)
+
 
 ---
 
